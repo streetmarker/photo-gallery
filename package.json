@@ -1,0 +1,41 @@
+{
+  "name": "nuxt-app",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "prepare": "python3 python-scripts/img-converter.py && python3 python-scripts/img-resizer.py && python3 python-scripts/get-dir.py",
+    "build": "nuxt build && nuxt generate",
+    "statfile": "cp googleb025fc386493216e.html ../../FirebasePhoto/public/",
+    "dev": "nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare",
+    "host": "rm -rf ../../FirebasePhoto/public/* && cp -r .output/public/* ../../FirebasePhoto/public/ && npm run statfile && cd ../../FirebasePhoto && firebase deploy --only hosting && cd ../GIT/nuxt-gallery",
+    "full": "npm run prepare && npm run build && npm run host",
+    "commit": "git add . && git commit -m \"fix\" && git push",
+    "update": "npm run prepare && rm -rf .output/public/assets && cp -r public/assets .output/public/assets && rm -rf .output/public/images && cp -r public/images .output/public && npm run host"
+  },
+  "dependencies": {
+    "@firebase/firestore": "^4.7.4",
+    "@fortawesome/fontawesome-free": "^6.6.0",
+    "@google-cloud/datastore": "^9.1.0",
+    "@pinia/nuxt": "^0.5.5",
+    "@primevue/themes": "^4.0.4",
+    "@vueuse/core": "^13.0.0",
+    "core-js": "^3.6.5",
+    "dotenv": "^16.4.5",
+    "firebase": "^10.14.1",
+    "nuxt": "^3.12.4",
+    "pinia": "^2.2.4",
+    "primeicons": "^7.0.0",
+    "primevue": "^4.0.4",
+    "vue": "latest",
+    "vue-router": "^4.4.5"
+  },
+  "devDependencies": {
+    "@primevue/nuxt-module": "^4.0.4"
+  },
+  "overrides": {
+    "vue": "latest"
+  }
+}

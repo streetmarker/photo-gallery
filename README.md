@@ -1,75 +1,15 @@
-# Nuxt 3 Minimal Starter
+![firebase_28dp](https://user-images.githubusercontent.com/64842623/215579973-73decd88-2143-4a6a-8e95-d943c0d1a5a8.png) Project which helped me practice buliding my own website but also create a space for my photo portfolio which is also my passion, just like IT.
 
-Look at the [Nuxt 3 documentation](https://nuxt.com/docs/getting-started/introduction) to learn more.
+tech stack:
+- Vue.js ( Nuxt )
+- Pinia ( storage )
+- Prime Vue ( UI Components )
+- Firestore ( DB )
+- Storage ( Static Files repo )
 
-## Setup
+Apart from app files there are python scripts to prepare photos for the website presentation:
+1. convert from jpg/png to webp
+2. resize images to fit the page (from each photo i make a preview one and one for fit screen ratio)
+3. set file holding photos paths for the app to take them from the server and display
 
-Make sure to install the dependencies:
-
-```bash
-# npm
-npm install
-
-# pnpm
-pnpm install
-
-# yarn
-yarn install
-
-# bun
-bun install
-```
-
-## Development Server
-
-Start the development server on `http://localhost:3000`:
-
-```bash
-# npm
-npm run dev
-
-# pnpm
-pnpm run dev
-
-# yarn
-yarn dev
-
-# bun
-bun run dev
-```
-
-## Production
-
-Build the application for production:
-
-```bash
-# npm
-npm run build
-
-# pnpm
-pnpm run build
-
-# yarn
-yarn build
-
-# bun
-bun run build
-```
-
-Locally preview production build:
-
-```bash
-# npm
-npm run preview
-
-# pnpm
-pnpm run preview
-
-# yarn
-yarn preview
-
-# bun
-bun run preview
-```
-
-Check out the [deployment documentation](https://nuxt.com/docs/getting-started/deployment) for more information.
+[m21photos.web.app](https://m21photos.web.app/)

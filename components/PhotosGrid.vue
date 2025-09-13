@@ -57,6 +57,14 @@ const imagesVertical = ref([])
 const images = ref([])
 const visibleImages = ref(new Array(images.value.length).fill(false));
 const imgRefs = ref([]);
+// const checkNearBottom = () => {
+//     if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 300) {
+//         loadNextBatch();
+//     }
+// };
+
+// window.addEventListener('scroll', checkNearBottom, { passive: true });
+// window.removeEventListener('scroll', checkNearBottom);
 
 function loadNextBatch() {
     const loadedVerticals = displayedBatches.value.reduce((acc, batch) => acc + batch.verticalImages.length, 0);
@@ -81,6 +89,11 @@ function loadNextBatch() {
     if (horizontalImage === null && verticalImages.length > 0) {
         displayedBatches.value.push({ verticalImages, horizontalImage: null });
     }
+
+    // if (observer && observerDiv.value) {
+    //     observer.unobserve(observerDiv.value);
+    //     observer.observe(observerDiv.value);
+    // }
 }
 function clearBatches() {
     // Zresetowanie obiektów obrazów
@@ -185,7 +198,7 @@ watch(() => store.category, async (newValue, oldValue) => {
 
         displayedBatches.value = [];
         loadNextBatch();
-        
+
     }
 })
 onMounted(async () => {
@@ -198,25 +211,37 @@ onMounted(async () => {
 
 
     loadNextBatch();
+    // if (observer) return; // zapobiega wielokrotnemu tworzeniu
+    const isMobile = window.innerWidth < 768;
     observer = new IntersectionObserver((entries) => {
         if (entries[0].isIntersecting) {
             console.log("Ładowanie nowej paczki...");
             loadNextBatch();
         }
     }, {
-        rootMargin: '100px',
-        threshold: 0.1
+        rootMargin: isMobile ? '400px' : '100px',
+        threshold: 0
+        // rootMargin: '100px',
+        // threshold: 0.1
     });
 
     if (observerDiv.value) {
         observer.observe(observerDiv.value);
     }
 
+    // Dodaj fallback na scroll
+    const handleScroll = () => {
+        const scrollPosition = window.innerHeight + window.scrollY;
+        const threshold = document.body.offsetHeight - 300;
+        if (scrollPosition >= threshold) {
+            loadNextBatch();
+        }
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+
     const config = useRuntimeConfig();
     const myIp = config.public.VUE_APP_MY_IP;
-
     envIp.value = myIp;
-
     logEntry(myIp);
 
     await nextTick(); // Zapewniamy, że DOM jest gotowy
@@ -236,6 +261,7 @@ onUnmounted(() => {
     }
     batchObservers.forEach((batchObserver) => batchObserver.disconnect()); // Odłącz wszystkie obserwacje paczek
     batchObservers.clear();
+    window.removeEventListener('scroll', handleScroll);
 });
 </script>
 
@@ -251,10 +277,12 @@ onUnmounted(() => {
     height: 60vh;
     margin-bottom: 5px;
 }
+
 .hero-text {
     text-align: center;
     font-family: 'FontAwesome';
 }
+
 .grid {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -270,8 +298,9 @@ onUnmounted(() => {
 
 .col-span-12 {
     grid-column: span 3 / span 3;
-    width: 320%;
-    max-width: -webkit-fill-available;
+    /* width: 320%;  <-- USUŃ */
+    /* width: 100%; */
+    max-width: 100%;
     margin: 5%;
     box-shadow: 0 4px 8px 5px rgba(0, 0, 0, 0.2), 0 6px 20px 5px rgba(0, 0, 0, 0.19);
 }
@@ -284,9 +313,23 @@ onUnmounted(() => {
 
 .horizontal-image {
     height: 100%;
-    width: 81vh;
+    width: 100%;
     object-fit: cover;
-    max-width: -webkit-fill-available;
+    max-width: 100%;
+}
+
+/* Responsywność na mobile */
+@media (max-width: 768px) {
+    .horizontal-image {
+        width: 100%;
+        max-width: 100%;
+        /* height: auto; */
+    }
+    .col-span-12 {
+        width: 100%;
+        max-width: 100%;
+        margin: 2% 0;
+    }
 }
 
 .grid-container {
@@ -301,8 +344,10 @@ onUnmounted(() => {
 }
 
 .observer-div {
-    height: 1px;
+    height: 50px;
+    width: 100%
 }
+
 .col-span-4 img {
     opacity: 0;
     transform: translateY(20px);
@@ -329,6 +374,7 @@ onUnmounted(() => {
     opacity: 1;
     transition: opacity 0.3s ease-in-out;
 }
+
 .modal.fade-out {
     opacity: 0;
 }

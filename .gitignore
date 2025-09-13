@@ -29,3 +29,4 @@ serviceAccountKey
 google*
 serviceAccountKey.json
 git*
+*cache*

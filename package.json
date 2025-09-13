@@ -10,7 +10,7 @@
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
-    "host": "rm -rf ../../FirebasePhoto/public/* && cp -r .output/public/* ../../FirebasePhoto/public/ && npm run statfile && cd ../../FirebasePhoto && firebase deploy --only hosting && cd ../GIT/nuxt-gallery",
+    "host": "rm -rf ../../FirebasePhoto/public/* && cp -r .output/public/* ../../FirebasePhoto/public/ && npm run statfile && cd ../../FirebasePhoto && firebase deploy --only hosting && cd ../GIT/photo-gallery",
     "full": "npm run prepare && npm run build && npm run host",
     "commit": "git add . && git commit -m \"fix\" && git push",
     "update": "npm run prepare && rm -rf .output/public/assets && cp -r public/assets .output/public/assets && rm -rf .output/public/images && cp -r public/images .output/public && npm run host"

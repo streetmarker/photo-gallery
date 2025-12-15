@@ -32,7 +32,7 @@ export default {
         return {
             items: [
                 {
-                    label: 'categories',
+                    label: 'Categories',
                     items: [
                         {
                             label: 'portraits',
@@ -76,7 +76,10 @@ export default {
     display: contents !important;
     position: relative !important;
 }
-
+.p-menubar {
+    border-color: teal !important;
+    border-width: 2px !important;
+}
 .menu-container {
     display: flex;
     flex-wrap: wrap;

@@ -1,27 +1,32 @@
 <script setup>
 import Menubar from 'primevue/menubar';
 import Badge from 'primevue/badge';
-import OverlayBadge from 'primevue/overlaybadge';
+import Button from 'primevue/button';
+import Menu from 'primevue/menu';
 </script>
 
 <template>
     <div class="menu-container">
         <div class="logo-container">
-                    <img class="logo" src="../public/logo.webp" alt="logo">
-                    <h1 class="title">M21Photos</h1>
-                </div>
-        <Menubar :model="items" class="menu-bar">
-            <template #item="{ item, props, hasSubmenu, root }">
-                <a @click="loadImages(item.value)" v-ripple class="menu-item" v-bind="props.action">
-                    <span :class="item.icon" />
-                    <span class="ml-2">{{ item.label }}</span>
-                    <Badge v-if="item.badge" :class="{ 'ml-auto': !root, 'ml-2': root }" :value="item.badge" />
-                    <span v-if="item.shortcut" class="shortcut">{{ item.shortcut }}</span>
-                    <i v-if="hasSubmenu"
-                        :class="['pi pi-angle-down', { 'pi-angle-down ml-2': root, 'pi-angle-right ml-auto': !root }]"></i>
-                </a>
-            </template>
-        </Menubar>
+            <img class="logo" src="../public/logo.webp" alt="logo">
+            <h1 class="title">M21Photos</h1>
+        </div>
+        <div class="card flex justify-center">
+            <Button type="button" severity="help" raised label="Categories"  @click="toggle" aria-haspopup="true"
+                aria-controls="overlay_menu" />
+            <Menu ref="menu" id="overlay_menu" :model="items" :popup="true">
+                <template #item="{ item, props, hasSubmenu, root }">
+                    <a @click="loadImages(item.value)" v-ripple class="menu-item" v-bind="props.action">
+                        <span :class="item.icon" />
+                        <span class="ml-2">{{ item.label }}</span>
+                        <Badge v-if="item.badge" :class="{ 'ml-auto': !root, 'ml-2': root }" :value="item.badge" />
+                        <span v-if="item.shortcut" class="shortcut">{{ item.shortcut }}</span>
+                        <i v-if="hasSubmenu"
+                            :class="['pi pi-angle-down', { 'pi-angle-down ml-2': root, 'pi-angle-right ml-auto': !root }]"></i>
+                    </a>
+                </template>
+            </Menu>
+        </div>
     </div>
 </template>
 <script>
@@ -66,6 +71,9 @@ export default {
         async loadImages(folder) {
             const store = photoStore();
             store.setCategory(folder);
+        },
+        toggle(event) {
+            this.$refs.menu.toggle(event);
         }
     }
 };
@@ -76,10 +84,11 @@ export default {
     display: contents !important;
     position: relative !important;
 }
-.p-menubar {
+
+/* .p-menubar {
     border-color: teal !important;
     border-width: 2px !important;
-}
+} */
 .menu-container {
     display: flex;
     flex-wrap: wrap;

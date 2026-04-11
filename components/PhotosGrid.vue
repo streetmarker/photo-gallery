@@ -1,389 +1,417 @@
 <template>
-    <div class="hero-text">
-        <h1 style="font-size:50px; text-align: left;">Photos from times I took my camera with me</h1>
-        <h3 style="text-align: right;"><i>Enjoy, MJ</i></h3>
+  <!-- Grain overlay — texture layer over entire page -->
+  <div class="grain" aria-hidden="true" />
+
+  <!-- ── Hero ─────────────────────────────────────────── -->
+  <header class="hero">
+    <h1 class="hero__title">
+      Photos from times<br />
+      I took my camera<br />
+      with me
+    </h1>
+    <p class="hero__sig">— MJ</p>
+  </header>
+
+  <!-- ── Loading state ────────────────────────────────── -->
+  <div v-if="loading" class="status">
+    <div class="loader" />
+  </div>
+
+  <!-- ── Error state ───────────────────────────────────── -->
+  <div v-else-if="error" class="status status--error">
+    Failed to load images.
+  </div>
+
+  <!-- ── Masonry grid ──────────────────────────────────── -->
+  <main v-else class="masonry" role="main">
+    <!-- Left column -->
+    <div class="masonry__col">
+      <template v-for="(img, i) in leftCol" :key="img.thumbnailImageSrc">
+        <figure
+          class="masonry__item"
+          :class="{ 'masonry__item--landscape': img.isHorizontal }"
+          :style="{ '--i': i }"
+          @click="openModal(img)"
+        >
+          <img
+            :src="img.thumbnailImageSrc"
+            :alt="img.alt"
+            class="masonry__img"
+            loading="lazy"
+            decoding="async"
+          />
+        </figure>
+      </template>
     </div>
 
-    <!-- Modal -->
-    <div v-if="isModalOpen" class="modal" @click="closeModal">
-        <img :src="modalImgSrc" :alt="modalImgAlt" class="modal-content" />
+    <!-- Right column — offset downward for asymmetry -->
+    <div class="masonry__col masonry__col--offset">
+      <template v-for="(img, i) in rightCol" :key="img.thumbnailImageSrc">
+        <figure
+          class="masonry__item"
+          :class="{ 'masonry__item--landscape': img.isHorizontal }"
+          :style="{ '--i': i }"
+          @click="openModal(img)"
+        >
+          <img
+            :src="img.thumbnailImageSrc"
+            :alt="img.alt"
+            class="masonry__img"
+            loading="lazy"
+            decoding="async"
+          />
+        </figure>
+      </template>
     </div>
+  </main>
 
-    <div v-if="displayedBatches != []" class="grid-container">
-        <div v-for="(batch, batchIndex) in displayedBatches" :key="batchIndex" class="batch-container"
-            :ref="setBatchRef">
-            <div v-for="(image, index) in batch.verticalImages" :key="index" class="col-span-4">
-                <img :class="{ 'visible': visibleImages[index] }" ref="imgRefs" :src="image.thumbnailImageSrc"
-                    :alt="image.alt" class="vertical-image" @click="openModal(image.itemImageSrc)" />
-            </div>
-            <div v-if="batch.horizontalImage" class="col-span-12">
-                <img :src="batch.horizontalImage.thumbnailImageSrc" :alt="batch.horizontalImage.alt"
-                    class="horizontal-image" @click="openModal(batch.horizontalImage.itemImageSrc)" />
-            </div>
-        </div>
+  <!-- ── Modal ────────────────────────────────────────── -->
+  <Transition name="modal">
+    <div
+      v-if="modal.open"
+      class="modal"
+      role="dialog"
+      aria-modal="true"
+      @click.self="closeModal"
+      @keydown.esc="closeModal"
+    >
+      <button class="modal__close" aria-label="Close" @click="closeModal">✕</button>
+      <img
+        :src="modal.src"
+        :alt="modal.alt"
+        class="modal__img"
+      />
     </div>
-    <div ref="observerDiv" class="observer-div"></div>
-
+  </Transition>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
-import { useIntersectionObserver } from '@vueuse/core';
+import { ref, computed, watch, onMounted } from 'vue'
+import { getStorageImgsNew, db } from '../firebaseInitializer'
+import { collection, addDoc } from 'firebase/firestore'
 
-import { db, getStorageImgsNew } from "../firebaseInitializer";
-import { collection, addDoc } from "firebase/firestore";
+// ── Store / config ────────────────────────────────────────
+const store = photoStore()
+const config = useRuntimeConfig()
 
-// const { firebase } = useNuxtApp()
-// console.log('grid:',firebase);
+// ── State ─────────────────────────────────────────────────
+const images  = ref([])   // all images for current category
+const loading = ref(true)
+const error   = ref(false)
 
-// const db = firebase.db
-// const getStorageImgsNew = firebase.getStorageImgsNew
+const modal = ref({ open: false, src: '', alt: '' })
 
-const store = photoStore();
-const envIp = ref("");
+// ── Masonry split ─────────────────────────────────────────
+// Distribute images into two columns tracking running height.
+// Portrait = 1.4 units, landscape = 0.6. Each image goes to
+// whichever column is currently shorter — balances both columns.
+const PORTRAIT_WEIGHT  = 1.4
+const LANDSCAPE_WEIGHT = 0.6
 
-const isModalOpen = ref(false);
-const modalImgSrc = ref('');
-const modalImgAlt = ref('');
+const columns = computed(() => {
+  const left  = []
+  const right = []
+  let leftH   = 0
+  let rightH  = 0
 
-const displayedBatches = ref([]);
-const batchSize = 6;
-const observerDiv = ref(null);
-let observer = null;
-const batchObservers = new Map();
-
-const imagesHorizontal = ref([])
-const imagesVertical = ref([])
-const images = ref([])
-const visibleImages = ref(new Array(images.value.length).fill(false));
-const imgRefs = ref([]);
-// const checkNearBottom = () => {
-//     if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 300) {
-//         loadNextBatch();
-//     }
-// };
-
-// window.addEventListener('scroll', checkNearBottom, { passive: true });
-// window.removeEventListener('scroll', checkNearBottom);
-
-function loadNextBatch() {
-    const loadedVerticals = displayedBatches.value.reduce((acc, batch) => acc + batch.verticalImages.length, 0);
-    const loadedHorizontals = displayedBatches.value.length; // Każda paczka dostaje kolejny obraz poziomy
-
-    const verticalImages = imagesVertical.value.slice(loadedVerticals, loadedVerticals + batchSize);
-    const horizontalImage = loadedHorizontals < imagesHorizontal.value.length
-        ? imagesHorizontal.value[loadedHorizontals]
-        : null; // Jeśli skończą się poziome, ustaw na null
-
-    if (verticalImages.length > 0 || horizontalImage) {
-        displayedBatches.value.push({ verticalImages, horizontalImage });
-        return
+  for (const img of images.value) {
+    const w = img.isHorizontal ? LANDSCAPE_WEIGHT : PORTRAIT_WEIGHT
+    if (leftH <= rightH) {
+      left.push(img)
+      leftH += w
+    } else {
+      right.push(img)
+      rightH += w
     }
+  }
 
-    // Jeśli skończyły się pionowe, ale są jeszcze poziome, dodajemy paczki tylko z poziomymi
-    if (verticalImages.length === 0 && horizontalImage) {
-        displayedBatches.value.push({ verticalImages: [], horizontalImage });
-    }
+  return { leftCol: left, rightCol: right }
+})
 
-    // Jeśli skończyły się poziome, ale są jeszcze pionowe, dodajemy paczki tylko z pionowymi
-    if (horizontalImage === null && verticalImages.length > 0) {
-        displayedBatches.value.push({ verticalImages, horizontalImage: null });
-    }
+const leftCol  = computed(() => columns.value.leftCol)
+const rightCol = computed(() => columns.value.rightCol)
 
-    // if (observer && observerDiv.value) {
-    //     observer.unobserve(observerDiv.value);
-    //     observer.observe(observerDiv.value);
-    // }
+// ── Data loading ──────────────────────────────────────────
+async function loadImages(category) {
+  loading.value = true
+  error.value   = false
+  images.value  = []
+
+  try {
+    images.value = await getStorageImgsNew(category)
+  } catch (e) {
+    console.error('[NewPhotoGrid] Failed to load images:', e)
+    error.value = true
+  } finally {
+    loading.value = false
+  }
 }
-function clearBatches() {
-    // Zresetowanie obiektów obrazów
-    displayedBatches.value.forEach((batch) => {
-        batch.verticalImages = null;
-        batch.horizontalImage = null;
-    });
-    displayedBatches.value = [];
 
-    // Usuń obserwatory paczek
-    batchObservers.forEach((batchObserver) => batchObserver.disconnect());
-    batchObservers.clear();
-}
-function setBatchRef(el, batchIndex) {
-    if (el && !batchObservers.has(batchIndex)) {
-        const batchObserver = new IntersectionObserver((entries) => {
-            entries.forEach((entry) => {
-                if (!entry.isIntersecting) {
-                    displayedBatches.value[batchIndex] = null;
-                    batchObservers.delete(batchIndex);
-                }
-            });
-        });
-        batchObserver.observe(el);
-        batchObservers.set(batchIndex, batchObserver);
-    }
-}
-const getIPAddress = async () => {
-    try {
-        const response = await fetch('https://api.ipify.org?format=json');
-        const data = await response.json();
-        const ipAddress = data.ip;;
-        return ipAddress;
-    } catch (error) {
-        return 'Błąd przy pobieraniu adresu IP:' + error;
-    }
-}
-const logEntry = async (myIp) => {
-    if (process.env.NODE_ENV === "production") {
-        let date = new Date();
+// ── Category watch ────────────────────────────────────────
+watch(
+  () => store.category,
+  (newCat, oldCat) => {
+    if (newCat && newCat !== oldCat) loadImages(newCat)
+  }
+)
 
-        function getPosition() {
-            return new Promise((resolve, reject) => {
-                navigator.geolocation.getCurrentPosition(
-                    (position) => {
-                        resolve({
-                            latLon: position.coords.latitude + " " + position.coords.longitude
-                        });
-                    },
-                    (error) => {
-                        reject(error);
-                    }
-                );
-            });
-        }
-
-        var position = null;
-        var userIp = null
-        try {
-            // position = await getPosition();
-            userIp = await getIPAddress();
-        } catch (error) {
-        }
-
-        if (userIp != myIp) {
-
-            let data = {
-                date: date,
-                location: position,
-                userAgent: navigator.userAgent || null,
-                IP: userIp || null
-            };
-            await addDoc(collection(db, "entries"), data);
-        }
-    }
-}
-function openModal(src, alt = '') {
-    modalImgSrc.value = src;
-    modalImgAlt.value = alt;
-    isModalOpen.value = true;
+// ── Modal ─────────────────────────────────────────────────
+function openModal(img) {
+  modal.value = { open: true, src: img.itemImageSrc, alt: img.alt }
 }
 function closeModal() {
-    const modalElement = document.querySelector('.modal');
-
-    // Dodajemy klasę fade-out, żeby płynnie zniknęło
-    modalElement?.classList.add('fade-out');
-
-    // Czekamy aż animacja zniknięcia się zakończy, potem zamykamy modal
-    setTimeout(() => {
-        isModalOpen.value = false;
-        modalElement?.classList.remove('fade-out'); // Czyścimy klasę po zakończeniu animacji
-    }, 300); // Czas animacji fade-out (300ms)
+  modal.value.open = false
 }
 
-watch(() => store.category, async (newValue, oldValue) => {
-    if (newValue != oldValue && !!newValue) {
-        clearBatches();
-        var getStorageImgsRes = await getStorageImgsNew(newValue);
-        imagesHorizontal.value = getStorageImgsRes.filter((el) => { return el.isHorizontal === true });
-        imagesVertical.value = getStorageImgsRes.filter((el) => { return el.isHorizontal === false });
-        images.value = getStorageImgsRes;
+// ── Visitor log (fire-and-forget) ─────────────────────────
+async function logVisit() {
+  if (process.env.NODE_ENV !== 'production') return
+  try {
+    const res  = await fetch('https://api.ipify.org?format=json')
+    const { ip } = await res.json()
+    const myIp = config.public.VUE_APP_MY_IP
+    if (ip === myIp) return
+    await addDoc(collection(db, 'entries'), {
+      date:      new Date(),
+      userAgent: navigator.userAgent ?? null,
+      IP:        ip,
+    })
+  } catch { /* non-critical */ }
+}
 
-        displayedBatches.value = [];
-        loadNextBatch();
-
-    }
+// ── Mount ─────────────────────────────────────────────────
+onMounted(() => {
+  loadImages('nature')
+  logVisit()
 })
-onMounted(async () => {
-    var getStorageImgsRes = await getStorageImgsNew('nature');
-
-    imagesHorizontal.value = getStorageImgsRes.filter((el) => { return el.isHorizontal === true });
-    imagesVertical.value = getStorageImgsRes.filter((el) => { return el.isHorizontal === false });
-    images.value = getStorageImgsRes;
-    // bcgImage.value = getStorageImgsRes[getStorageImgsRes.length - 1].thumbnailImageSrc.replace("/_nuxt", "");
-
-
-    loadNextBatch();
-    // if (observer) return; // zapobiega wielokrotnemu tworzeniu
-    const isMobile = window.innerWidth < 768;
-    observer = new IntersectionObserver((entries) => {
-        if (entries[0].isIntersecting) {
-            console.log("Ładowanie nowej paczki...");
-            loadNextBatch();
-        }
-    }, {
-        rootMargin: isMobile ? '400px' : '100px',
-        threshold: 0
-        // rootMargin: '100px',
-        // threshold: 0.1
-    });
-
-    if (observerDiv.value) {
-        observer.observe(observerDiv.value);
-    }
-
-    // Dodaj fallback na scroll
-    const handleScroll = () => {
-        const scrollPosition = window.innerHeight + window.scrollY;
-        const threshold = document.body.offsetHeight - 300;
-        if (scrollPosition >= threshold) {
-            loadNextBatch();
-        }
-    };
-    window.addEventListener('scroll', handleScroll, { passive: true });
-
-    const config = useRuntimeConfig();
-    const myIp = config.public.VUE_APP_MY_IP;
-    envIp.value = myIp;
-    logEntry(myIp);
-
-    await nextTick(); // Zapewniamy, że DOM jest gotowy
-
-
-    imgRefs.value.forEach((img, index) => {
-        useIntersectionObserver(img, ([{ isIntersecting }]) => {
-            if (isIntersecting) {
-                visibleImages.value[index] = true;
-            }
-        });
-    });
-});
-onUnmounted(() => {
-    if (observer && observerDiv.value) {
-        observer.unobserve(observerDiv.value);
-    }
-    batchObservers.forEach((batchObserver) => batchObserver.disconnect()); // Odłącz wszystkie obserwacje paczek
-    batchObservers.clear();
-    window.removeEventListener('scroll', handleScroll);
-});
 </script>
 
-<style>
-.hero-image {
-    display: flex;
-    justify-content: center;
-    min-width: 40vh;
-    background-position: center;
-    background-repeat: no-repeat;
-    background-size: cover;
-    position: relative;
-    height: 60vh;
-    margin-bottom: 5px;
+<style scoped>
+/* ── External ──────────────────────────────────────────── */
+@import '../style/loader.css';
+
+/* ── Google Fonts ──────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Mono:wght@300;400&display=swap');
+
+/* ── Design tokens ─────────────────────────────────────── */
+:root {
+  --bg:          #0e0e0e;
+  --surface:     #161616;
+  --text:        #e8e2d9;
+  --muted:       #5a5650;
+  --accent:      #c9a96e;
+  --gap:         clamp(10px, 1.8vw, 22px);
+  --pad-x:       clamp(16px, 5vw, 72px);
+  --col-w:       calc((100% - var(--gap)) / 2);
+  --radius:      2px;
+  --trans-img:   transform 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+                 filter    0.6s ease,
+                 opacity   0.5s ease;
 }
 
-.hero-text {
-    text-align: center;
-    font-family: 'FontAwesome';
+/* ── Base ──────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ── Grain ─────────────────────────────────────────────── */
+.grain {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 100;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  background-size: 180px 180px;
 }
 
-.grid {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 1rem;
-    margin-top: 1rem;
+/* ── Hero ──────────────────────────────────────────────── */
+.hero {
+  padding: clamp(52px, 10vw, 120px) var(--pad-x) clamp(40px, 6vw, 80px);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 
-.col-span-4 {
-    grid-column: span 1 / span 1;
-    margin: 5%;
-    box-shadow: 0 4px 8px 5px rgba(0, 0, 0, 0.2), 0 6px 20px 5px rgba(0, 0, 0, 0.19);
+.hero__title {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-weight: 400;
+  font-style: italic;
+  font-size: clamp(32px, 6.5vw, 72px);
+  line-height: 1.12;
+  letter-spacing: -0.025em;
+  color: var(--text);
+  max-width: 14ch;
 }
 
-.col-span-12 {
-    grid-column: span 3 / span 3;
-    /* width: 320%;  <-- USUŃ */
-    /* width: 100%; */
-    max-width: 100%;
-    margin: 5%;
-    box-shadow: 0 4px 8px 5px rgba(0, 0, 0, 0.2), 0 6px 20px 5px rgba(0, 0, 0, 0.19);
+.hero__sig {
+  font-family: 'DM Mono', 'Courier New', monospace;
+  font-weight: 300;
+  font-size: clamp(11px, 1.2vw, 14px);
+  letter-spacing: 0.22em;
+  color: var(--accent);
+  text-transform: uppercase;
 }
 
-.vertical-image {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
+/* ── Status (loading / error) ──────────────────────────── */
+.status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 80px var(--pad-x);
+  color: var(--muted);
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+}
+.status--error { color: #c0392b; }
+
+/* ── Masonry grid ──────────────────────────────────────── */
+.masonry {
+  display: flex;
+  gap: var(--gap);
+  padding: 0 var(--pad-x) clamp(60px, 10vw, 140px);
+  align-items: flex-start;
 }
 
-.horizontal-image {
-    height: 100%;
-    width: 100%;
-    object-fit: cover;
-    max-width: 100%;
-}
-
-/* Responsywność na mobile */
-@media (max-width: 768px) {
-    .horizontal-image {
-        width: 100%;
-        max-width: 100%;
-        /* height: auto; */
-    }
-    .col-span-12 {
-        width: 100%;
-        max-width: 100%;
-        margin: 2% 0;
-    }
-}
-
-.grid-container {
+.masonry__col {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: var(--gap);
+    flex: 1;
+    min-width: 0;
+    padding: 7px;
 }
 
-.batch-container {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
+/* Right column pushed down — creates the asymmetric masonry feel */
+.masonry__col--offset {
+  margin-top: clamp(40px, 8vw, 100px);
 }
 
-.observer-div {
-    height: 50px;
-    width: 100%
+/* ── Masonry item ──────────────────────────────────────── */
+.masonry__item {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius);
+  cursor: pointer;
+  padding-bottom: 7px;
+
+  /* staggered fade-up on load */
+  animation: fadeUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc(var(--i, 0) * 80ms);
 }
 
-.col-span-4 img {
+/* Landscape images get extra breathing room above and below */
+.masonry__item--landscape {
+  margin-top: clamp(16px, 3vw, 40px);
+  margin-bottom: clamp(16px, 3vw, 40px);
+}
+
+/* ── Image ─────────────────────────────────────────────── */
+.masonry__img {
+  display: block;
+  width: 100%;
+  height: auto;
+  transition: var(--trans-img);
+  filter: brightness(0.92) saturate(0.9);
+  transform-origin: center center;
+}
+
+.masonry__item:hover .masonry__img {
+  transform: scale(1.03);
+  filter: brightness(1.0) saturate(1.05);
+}
+
+/* thin accent line on hover — slides in from left */
+.masonry__item::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: var(--accent);
+  transition: width 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.masonry__item:hover::after {
+  width: 100%;
+}
+
+/* ── Modal ─────────────────────────────────────────────── */
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  background: rgba(6, 6, 6, 0.94);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: zoom-out;
+}
+
+.modal__img {
+  max-width: min(92vw, 1400px);
+  max-height: 90vh;
+  object-fit: contain;
+  border-radius: var(--radius);
+  box-shadow: 0 40px 100px rgba(0, 0, 0, 0.8);
+  cursor: default;
+}
+
+.modal__close {
+  position: absolute;
+  top: 24px;
+  right: 28px;
+  background: none;
+  border: 1px solid var(--muted);
+  color: var(--text);
+  font-size: 14px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.2s ease, color 0.2s ease;
+}
+.modal__close:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* ── Modal transition ──────────────────────────────────── */
+.modal-enter-active,
+.modal-leave-active {
+  transition: opacity 0.3s ease;
+}
+.modal-enter-from,
+.modal-leave-to {
+  opacity: 0;
+}
+
+/* ── Animations ────────────────────────────────────────── */
+@keyframes fadeUp {
+  from {
     opacity: 0;
-    transform: translateY(20px);
-    transition: opacity 0.6s ease-out, transform 0.6s ease-out;
-}
-
-.col-span-4 img.visible {
+    transform: translateY(24px);
+  }
+  to {
     opacity: 1;
     transform: translateY(0);
+  }
 }
+/* ── Responsive ────────────────────────────────────────── */
 
-/* Modal */
-.modal {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.85);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 9999;
-    opacity: 1;
-    transition: opacity 0.3s ease-in-out;
-}
+/* Narrow mobile: tighter padding, no column offset */
+@media (max-width: 480px) {
+  .masonry {
+    /* padding-left: 12px;
+    padding-right: 12px; */
+  }
 
-.modal.fade-out {
-    opacity: 0;
-}
-
-.modal-content {
-    max-width: 90%;
-    max-height: 90vh;
-    border-radius: 12px;
-    box-shadow: 0 0 30px rgba(0, 0, 0, 0.6);
-    transition: opacity 0.3s ease;
+  .masonry__col--offset {
+    margin-top: clamp(24px, 6vw, 50px);
+  }
 }
 </style>

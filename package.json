@@ -24,7 +24,7 @@
     "@vueuse/core": "^13.0.0",
     "core-js": "^3.6.5",
     "dotenv": "^16.4.5",
-    "firebase": "^10.14.1",
+    "firebase": "^12.8.0",
     "nuxt": "^3.12.4",
     "pinia": "^2.2.4",
     "primeicons": "^7.0.0",

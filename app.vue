@@ -20,6 +20,7 @@ useSeoMeta({
     <NuxtPage />
     <CommentBox />
     <SocialFooter />
+    <ScrollToTop />
   </div>
 </template>
 <script>

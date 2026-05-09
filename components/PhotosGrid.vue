@@ -33,12 +33,17 @@
           :style="{ '--i': i }"
           @click="openModal(img)"
         >
+          <div v-if="!loadedImages.has(img.thumbnailImageSrc)" class="masonry__loader">
+             <div class="loader"></div>
+          </div>
           <img
             :src="img.thumbnailImageSrc"
             :alt="img.alt"
             class="masonry__img"
+            :class="{ 'masonry__img--loaded': loadedImages.has(img.thumbnailImageSrc) }"
             loading="lazy"
             decoding="async"
+            @load="onImageLoad(img.thumbnailImageSrc)"
           />
         </figure>
       </template>
@@ -53,12 +58,17 @@
           :style="{ '--i': i }"
           @click="openModal(img)"
         >
+          <div v-if="!loadedImages.has(img.thumbnailImageSrc)" class="masonry__loader">
+             <div class="loader"></div>
+          </div>
           <img
             :src="img.thumbnailImageSrc"
             :alt="img.alt"
             class="masonry__img"
+            :class="{ 'masonry__img--loaded': loadedImages.has(img.thumbnailImageSrc) }"
             loading="lazy"
             decoding="async"
+            @load="onImageLoad(img.thumbnailImageSrc)"
           />
         </figure>
       </template>
@@ -72,7 +82,7 @@
       class="modal"
       role="dialog"
       aria-modal="true"
-      @click.self="closeModal"
+      @click="closeModal"
       @keydown.esc="closeModal"
     >
       <button class="modal__close" aria-label="Close" @click="closeModal">✕</button>
@@ -98,8 +108,13 @@ const config = useRuntimeConfig()
 const images  = ref([])   // all images for current category
 const loading = ref(true)
 const error   = ref(false)
+const loadedImages = ref(new Set()) // track which individual images are loaded
 
 const modal = ref({ open: false, src: '', alt: '' })
+
+function onImageLoad(src) {
+  loadedImages.value.add(src)
+}
 
 // ── Masonry split ─────────────────────────────────────────
 // Distribute images into two columns tracking running height.
@@ -200,10 +215,10 @@ onMounted(() => {
   --text:        #e8e2d9;
   --muted:       #5a5650;
   --accent:      #c9a96e;
-  --gap:         clamp(10px, 1.8vw, 22px);
+  --gap:         1px;
   --pad-x:       clamp(16px, 5vw, 72px);
   --col-w:       calc((100% - var(--gap)) / 2);
-  --radius:      2px;
+  --radius:      12px;
   --trans-img:   transform 0.6s cubic-bezier(0.16, 1, 0.3, 1),
                  filter    0.6s ease,
                  opacity   0.5s ease;
@@ -279,7 +294,6 @@ onMounted(() => {
     gap: var(--gap);
     flex: 1;
     min-width: 0;
-    padding: 7px;
 }
 
 /* Right column pushed down — creates the asymmetric masonry feel */
@@ -293,17 +307,21 @@ onMounted(() => {
   overflow: hidden;
   border-radius: var(--radius);
   cursor: pointer;
-  padding-bottom: 7px;
+  border: 1px solid rgba(255, 255, 255, 0.8); /* cienki biały pasek */
+  background: var(--surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
 
   /* staggered fade-up on load */
   animation: fadeUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
   animation-delay: calc(var(--i, 0) * 80ms);
 }
 
-/* Landscape images get extra breathing room above and below */
-.masonry__item--landscape {
-  margin-top: clamp(16px, 3vw, 40px);
-  margin-bottom: clamp(16px, 3vw, 40px);
+.masonry__loader {
+  position: absolute;
+  z-index: 2;
 }
 
 /* ── Image ─────────────────────────────────────────────── */
@@ -314,6 +332,11 @@ onMounted(() => {
   transition: var(--trans-img);
   filter: brightness(0.92) saturate(0.9);
   transform-origin: center center;
+  opacity: 0;
+}
+
+.masonry__img--loaded {
+  opacity: 1;
 }
 
 .masonry__item:hover .masonry__img {
@@ -355,7 +378,7 @@ onMounted(() => {
   object-fit: contain;
   border-radius: var(--radius);
   box-shadow: 0 40px 100px rgba(0, 0, 0, 0.8);
-  cursor: default;
+  cursor: zoom-out;
 }
 
 .modal__close {
@@ -403,15 +426,25 @@ onMounted(() => {
 }
 /* ── Responsive ────────────────────────────────────────── */
 
-/* Narrow mobile: tighter padding, no column offset */
-@media (max-width: 480px) {
+/* Tablet & Mobile: Keep 2 columns but optimize spacing */
+@media (max-width: 768px) {
   .masonry {
-    /* padding-left: 12px;
-    padding-right: 12px; */
+    flex-direction: row;
+    padding: 0 8px clamp(60px, 10vw, 140px);
+    gap: var(--gap);
   }
 
+  .masonry__col {
+    gap: var(--gap);
+  }
+
+  /* Smaller offset for mobile to keep the style but avoid huge gaps */
   .masonry__col--offset {
-    margin-top: clamp(24px, 6vw, 50px);
+    margin-top: 20px;
+  }
+
+  .masonry__item {
+    min-height: 100px;
   }
 }
 </style>

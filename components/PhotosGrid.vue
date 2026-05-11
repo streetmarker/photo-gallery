@@ -4,12 +4,12 @@
 
   <!-- ── Hero ─────────────────────────────────────────── -->
   <header class="hero">
-    <h1 class="hero__title">
+    <h1 v-if="beforeCategorySwitch" class="hero__title">
       Photos from times<br />
       I took my camera<br />
       with me
     </h1>
-    <p class="hero__sig">— MJ</p>
+    <br>
   </header>
 
   <!-- ── Loading state ────────────────────────────────── -->
@@ -108,6 +108,7 @@ const config = useRuntimeConfig()
 const images  = ref([])   // all images for current category
 const loading = ref(true)
 const error   = ref(false)
+const beforeCategorySwitch = ref(true)
 const loadedImages = ref(new Set()) // track which individual images are loaded
 
 const modal = ref({ open: false, src: '', alt: '' })
@@ -147,13 +148,14 @@ const leftCol  = computed(() => columns.value.leftCol)
 const rightCol = computed(() => columns.value.rightCol)
 
 // ── Data loading ──────────────────────────────────────────
-async function loadImages(category) {
+async function loadImages(category, firstLoad = false) {
   loading.value = true
   error.value   = false
   images.value  = []
 
   try {
     images.value = await getStorageImgsNew(category)
+    beforeCategorySwitch.value = !firstLoad ? false : true
   } catch (e) {
     console.error('[NewPhotoGrid] Failed to load images:', e)
     error.value = true
@@ -196,7 +198,7 @@ async function logVisit() {
 
 // ── Mount ─────────────────────────────────────────────────
 onMounted(() => {
-  loadImages('nature')
+  loadImages('nature', true)
   logVisit()
 })
 </script>
@@ -298,7 +300,7 @@ onMounted(() => {
 
 /* Right column pushed down — creates the asymmetric masonry feel */
 .masonry__col--offset {
-  margin-top: clamp(40px, 8vw, 100px);
+  margin-top: clamp(40px, 8vw);
 }
 
 /* ── Masonry item ──────────────────────────────────────── */
@@ -326,6 +328,7 @@ onMounted(() => {
 
 /* ── Image ─────────────────────────────────────────────── */
 .masonry__img {
+  border-radius: 8px;
   display: block;
   width: 100%;
   height: auto;
@@ -439,9 +442,9 @@ onMounted(() => {
   }
 
   /* Smaller offset for mobile to keep the style but avoid huge gaps */
-  .masonry__col--offset {
+  /* .masonry__col--offset {
     margin-top: 20px;
-  }
+  } */
 
   .masonry__item {
     min-height: 100px;

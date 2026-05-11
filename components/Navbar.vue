@@ -90,6 +90,8 @@ export default {
     border-width: 2px !important;
 } */
 .menu-container {
+    margin-top: 10px;
+    border-radius: 8px;
     display: flex;
     flex-wrap: wrap;
     justify-content: space-between;

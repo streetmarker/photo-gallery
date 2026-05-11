@@ -33,6 +33,8 @@
   
   <style scoped>
   .social-footer {
+    margin-bottom: 10px;
+    border-radius: 8px;
     display: flex;
     justify-content: center;
     align-items: center;

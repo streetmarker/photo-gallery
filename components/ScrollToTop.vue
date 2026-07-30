@@ -1,14 +1,15 @@
 <template>
-  <transition name="fade">
+  <Transition name="fab-fade">
     <button
       v-show="isVisible"
+      type="button"
+      class="scroll-to-top-fab"
+      aria-label="Przewiń do góry strony"
       @click="scrollToTop"
-      class="scroll-to-top"
-      aria-label="Przewiń do góry"
     >
-      <i class="pi pi-arrow-up"></i>
+      <i class="pi pi-arrow-up" aria-hidden="true" />
     </button>
-  </transition>
+  </Transition>
 </template>
 
 <script setup>
@@ -17,85 +18,89 @@ import { ref, onMounted, onUnmounted } from 'vue'
 const isVisible = ref(false)
 
 const checkScroll = () => {
-  // Pokaż przycisk, gdy użytkownik przewinie stronę o więcej niż 300px
-  isVisible.value = window.scrollY > 300
+  if (typeof window !== 'undefined') {
+    isVisible.value = window.scrollY > 350
+  }
 }
 
 const scrollToTop = () => {
-  window.scrollTo({
-    top: 0,
-    behavior: 'smooth'
-  })
+  if (typeof window !== 'undefined') {
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    })
+  }
 }
 
 onMounted(() => {
-  window.addEventListener('scroll', checkScroll, { passive: true })
+  if (typeof window !== 'undefined') {
+    window.addEventListener('scroll', checkScroll, { passive: true })
+  }
 })
 
 onUnmounted(() => {
-  window.removeEventListener('scroll', checkScroll)
+  if (typeof window !== 'undefined') {
+    window.removeEventListener('scroll', checkScroll)
+  }
 })
 </script>
 
 <style scoped>
-.scroll-to-top {
-  background: var(--p-button-help-background);
+.scroll-to-top-fab {
   position: fixed;
-  bottom: clamp(24px, 6vw, 40px);
-  right: clamp(24px, 6vw, 40px);
+  bottom: clamp(24px, 5vw, 36px);
+  right: clamp(24px, 5vw, 36px);
+  z-index: var(--z-fab, 800);
   width: 52px;
   height: 52px;
   border-radius: 50%;
-  color: #e8e2d9; /* Jasny tekst */
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: var(--bg-surface-elevated, #1A1A26);
+  border: 1px solid rgba(139, 92, 246, 0.4);
+  color: #FFFFFF;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  z-index: 1000;
-  backdrop-filter: blur(8px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
-  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease, transform 0.3s ease;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6), 0 0 16px rgba(139, 92, 246, 0.2);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   user-select: none;
   -webkit-tap-highlight-color: transparent;
 }
 
-.scroll-to-top:hover {
-  background-color: rgba(14, 14, 14, 1);
-  border-color: #c9a96e; /* Złoty akcent przy najechaní */
-  color: #c9a96e;
-  transform: translateY(-4px);
+.scroll-to-top-fab:hover {
+  background: var(--color-brand, #8B5CF6);
+  border-color: var(--color-brand, #8B5CF6);
+  color: #FFFFFF;
+  transform: translateY(-4px) scale(1.08);
+  box-shadow: 0 12px 32px rgba(139, 92, 246, 0.5);
 }
 
-.scroll-to-top:active {
-  transform: translateY(0);
+.scroll-to-top-fab:active {
+  transform: translateY(0) scale(1);
 }
 
-.scroll-to-top i {
-  font-size: 1.4rem;
+.scroll-to-top-fab i {
+  font-size: 1.25rem;
 }
 
-/* Animacja pojawiania się i znikania (Vue Transition) */
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1), transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+/* Vue Transition */
+.fab-fade-enter-active,
+.fab-fade-leave-active {
+  transition: opacity 0.35s ease, transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
 }
-.fade-enter-from,
-.fade-leave-to {
+
+.fab-fade-enter-from,
+.fab-fade-leave-to {
   opacity: 0;
-  transform: translateY(20px);
+  transform: translateY(16px) scale(0.9);
 }
 
-/* Dostosowanie dla bardzo małych ekranów (Aaccessibility) */
 @media (max-width: 480px) {
-  .scroll-to-top {
-    width: 100px;
-    height: 100px;
-    bottom: 60px;
+  .scroll-to-top-fab {
+    width: 48px;
+    height: 48px;
+    bottom: 20px;
     right: 20px;
-  }
-  .scroll-to-top i {
-    font-size: 2.2rem;
   }
 }
 </style>

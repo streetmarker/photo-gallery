@@ -2,8 +2,42 @@
 import Aura from '@primevue/themes/aura';
 
 export default defineNuxtConfig({
+  vite: {
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (!id.includes('node_modules')) return;
+
+            if (id.includes('firebase')) {
+              return 'vendor-firebase';
+            }
+
+            if (
+              id.includes('primevue') ||
+              id.includes('@primevue') ||
+              id.includes('primeicons') ||
+              id.includes('primeflex')
+            ) {
+              return 'vendor-primevue';
+            }
+
+            if (
+              id.includes('/vue/') ||
+              id.includes('/@vue/') ||
+              id.includes('vue-router') ||
+              id.includes('pinia')
+            ) {
+              return 'vendor-core';
+            }
+
+          }
+        }
+      }
+    }
+  },
   compatibilityDate: '2024-04-03',
-  devtools: { enabled: true },
+  devtools: { enabled: true },      
   runtimeConfig: {
     public: {
       VUE_APP_MY_IP: process.env.VUE_APP_MY_IP,
@@ -27,7 +61,7 @@ export default defineNuxtConfig({
       theme: {
         preset: Aura,
         options: {
-          darkModeSelector: false || 'none',
+          darkModeSelector: 'none',
         }
       }
     },

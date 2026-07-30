@@ -13,117 +13,130 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 
-
 const db = getFirestore(app);
 db._databaseId.projectId = "m21photos"; // QUICK FIX
 
 const env = process.env.NODE_ENV;
-
 
 async function loadImagePathsAndOrientations() {
     try {
         const docRef = doc(db, "conf", "fileName");
         const docSnap = await getDoc(docRef);
 
-        if (docSnap.exists()) {
-            const fileName = docSnap.data().file_name
-            var data
-            if (env == 'development') {
-                data = await fetch(`http://localhost:3000/images/${fileName}`);
-            } else {
-                data = await fetch(`https://m21photos.web.app/images/${fileName}?v=${Date.now()}`);
-            }
-            const results = await data.json();
-            return results
+        let fileName = "file_info_20260506214321.json"; // fallback
+        if (docSnap.exists() && docSnap.data().file_name) {
+            fileName = docSnap.data().file_name;
+        }
+
+        let url;
+        if (env === 'development') {
+            url = `/images/${fileName}`;
         } else {
-            // docSnap.data() will be undefined in this case
-            console.log("No such document!");
-            return null
+            url = `https://m21photos.web.app/images/${fileName}?v=${Date.now()}`;
+        }
+
+        try {
+            const data = await fetch(url);
+            const results = await data.json();
+            return results;
+        } catch (fetchErr) {
+            // Fallback fetch relative if host is custom
+            const fallbackData = await fetch(`/images/file_info_20260506214321.json`);
+            return await fallbackData.json();
         }
 
     } catch (error) {
         console.error("Błąd podczas ładowania ścieżek:", error);
+        return [];
     }
 }
 
 const getStorageImgsNew = async (folder) => {
     const datas = await loadImagePathsAndOrientations();
-    var images = [];
-    var id = 0
+    const images = [];
+    const counts = { all: 0, nature: 0, people: 0, buildings: 0, cars: 0 };
+
+    if (!datas || !Array.isArray(datas)) {
+        return { images: [], counts };
+    }
+
+    let id = 0;
     for (const data of datas) {
-        if (!!folder && data.path.includes(folder)) {
+        if (!data || !data.path) continue;
+
+        counts.all++;
+        if (data.path.includes('nature')) counts.nature++;
+        if (data.path.includes('people')) counts.people++;
+        if (data.path.includes('buildings')) counts.buildings++;
+        if (data.path.includes('cars')) counts.cars++;
+
+        const isMatch = !folder || folder === 'all' || data.path.includes(folder);
+        if (isMatch) {
             let thumbnail = data.path.replace(/\.webp$/, "-min.webp");
+            
+            let categoryLabel = 'Galeria';
+            let categoryKey = 'all';
+            if (data.path.includes('nature')) { categoryLabel = 'Natura'; categoryKey = 'nature'; }
+            else if (data.path.includes('people')) { categoryLabel = 'Portret'; categoryKey = 'people'; }
+            else if (data.path.includes('buildings')) { categoryLabel = 'Ulica'; categoryKey = 'buildings'; }
+            else if (data.path.includes('cars')) { categoryLabel = 'Auta'; categoryKey = 'cars'; }
+
+            const fileName = data.path.split('/').pop() || '';
+            const cleanTitle = fileName
+                .replace(/\.webp$/, '')
+                .replace(/\(1\)/g, '')
+                .replace(/~/g, ' ')
+                .replace(/_/g, ' ')
+                .trim();
+
             let obj = {
                 id,
                 itemImageSrc: data.path,
                 thumbnailImageSrc: thumbnail,
-                alt: 'Image',
-                title: 'Image',
-                isHorizontal: data.isHorizontal
-            }
+                alt: cleanTitle ? `${categoryLabel} - ${cleanTitle}` : 'Fotografia M21Photos',
+                title: cleanTitle || `Fotografia #${id + 1}`,
+                category: categoryLabel,
+                categoryKey: categoryKey,
+                isHorizontal: !!data.isHorizontal
+            };
             images.push(obj);
         }
-        id++
+        id++;
     }
-    return images
-}
+    return { images, counts };
+};
 
 const getStorageImgs = async (folder, justList) => {
-
-    // var imagesLoc = [];
-    var images = [];
-    // var loadingImages = {};
-
     try {
-
-        var res = await getPhotosDb(folder);
+        const res = await getPhotosDb(folder);
+        const images = [];
         if (justList) {
-            var id = 0
+            let id = 0;
             for (const data of res) {
                 let obj = {
                     id,
                     itemImageSrc: data.url,
                     thumbnailImageSrc: data.url,
-                    alt: 'Image',
-                    title: 'Image',
+                    alt: 'Fotografia M21Photos',
+                    title: 'Fotografia M21Photos',
+                    category: folder,
                     isHorizontal: data.isHorizontal
-                }
+                };
                 images.push(obj);
-                id++
+                id++;
             }
-            return images
+            return images;
         }
-
-        // for (const data of res) {
-        //     let url = data.url
-        //     images.push(url);
-        //     if (!onlyOne) {
-        //         loadingImages[url] = true;
-        //     }
-        //     if (images.length === 4) {
-        //         imagesLoc.push({ images: [...images] });
-        //         images = [];
-        //     }
-        // }
-        // if (images.length > 0) {
-        //     imagesLoc.push({ images: [...images] });
-        // }
-
-        // if (onlyOne) {
-        //     return imagesLoc[imagesLoc.length - 1].images[imagesLoc[imagesLoc.length - 1].images.length - 1]
-        // }
-        // return { imagesLoc, loadingImages };
-
     } catch (error) {
         console.log('Błąd:', error);
-        return []
+        return [];
     }
 };
 
 const getPhotosDb = async (folder) => {
     const querySnapshot = await getDocs(collection(db, "imgUrls/images/" + folder));
     const data = querySnapshot.docs.map(doc => doc.data());
-    return data
-}
+    return data;
+};
 
-export { db, env, getStorageImgsNew, getStorageImgs, getPhotosDb }
+export { db, env, getStorageImgsNew, getStorageImgs, getPhotosDb };

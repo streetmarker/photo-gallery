@@ -1,0 +1,237 @@
+/* ── M21Photos Design System & CSS Tokens ────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
+
+:root {
+  /* Brand Accent — Single Brand Violet System */
+  --color-brand: #8B5CF6;          /* Primary Violet 500 */
+  --color-brand-hover: #7C3AED;    /* Violet 600 */
+  --color-brand-active: #6D28D9;   /* Violet 700 */
+  --color-brand-light: rgba(139, 92, 246, 0.15);
+  --color-brand-border: rgba(139, 92, 246, 0.4);
+  --color-brand-glow: rgba(139, 92, 246, 0.35);
+
+  /* Dark Editorial Palette */
+  --bg-page: #08080C;
+  --bg-surface: #121218;
+  --bg-surface-elevated: #1A1A26;
+  --bg-surface-hover: #222232;
+  --bg-overlay: rgba(8, 8, 12, 0.96);
+
+  /* Text Colors (WCAG AA Compliant contrast > 4.5:1) */
+  --text-primary: #F3F3F6;
+  --text-secondary: #A0A0B2;
+  --text-muted: #6E6E82;
+  --text-brand: #A78BFA;
+
+  /* Borders & Focus */
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-medium: rgba(255, 255, 255, 0.16);
+  --border-focus: var(--color-brand);
+  --focus-ring: 0 0 0 3px rgba(139, 92, 246, 0.5);
+
+  /* Typography */
+  --font-serif: 'Playfair Display', Georgia, serif;
+  --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'DM Mono', monospace;
+
+  /* Radii */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-full: 9999px;
+
+  /* Shadows */
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.7);
+  --shadow-glow: 0 0 24px var(--color-brand-glow);
+
+  /* Transitions */
+  --transition-fast: 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-normal: 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Explicit Z-Index System */
+  --z-background: 1;
+  --z-content: 10;
+  --z-navbar: 100;
+  --z-backdrop: 490;
+  --z-dropdown: 500;
+  --z-fab: 800;
+  --z-modal: 1000;
+  --z-toast: 1100;
+}
+
+/* ── Base resets ──────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  color-scheme: dark;
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--bg-page);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  min-height: 100vh;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-page);
+}
+::-webkit-scrollbar-thumb {
+  background: #242434;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-brand);
+}
+
+/* Focus Visible outline for keyboard navigation */
+:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: var(--radius-sm);
+}
+
+/* ── Reusable Component System: Buttons ───────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 20px;
+  font-family: var(--font-sans);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  border-radius: var(--radius-full);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  user-select: none;
+  text-decoration: none;
+  min-height: 44px; /* Touch target safe size */
+}
+
+/* Primary Button: Solid Brand Violet */
+.btn-primary {
+  background-color: var(--color-brand);
+  color: #FFFFFF;
+  border-color: var(--color-brand);
+  box-shadow: 0 4px 16px rgba(139, 92, 246, 0.35);
+}
+.btn-primary:hover:not(:disabled) {
+  background-color: var(--color-brand-hover);
+  border-color: var(--color-brand-hover);
+  box-shadow: 0 6px 20px rgba(139, 92, 246, 0.5);
+  transform: translateY(-1px);
+}
+.btn-primary:active:not(:disabled) {
+  background-color: var(--color-brand-active);
+  transform: translateY(0);
+}
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* Secondary Button: Outline Violet Accent */
+.btn-secondary {
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border-medium);
+}
+.btn-secondary:hover:not(:disabled) {
+  border-color: var(--color-brand);
+  color: var(--color-brand);
+  background-color: var(--color-brand-light);
+  transform: translateY(-1px);
+}
+.btn-secondary:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+/* Icon Only Button */
+.btn-icon {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border-radius: 50%;
+  background: var(--bg-surface-elevated);
+  color: var(--text-primary);
+  border: 1px solid var(--border-subtle);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+.btn-icon:hover {
+  background: var(--bg-surface-hover);
+  border-color: var(--color-brand);
+  color: var(--color-brand);
+  transform: scale(1.05);
+}
+
+/* Active Chip Filter */
+.chip-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  background: var(--color-brand-light);
+  border: 1px solid var(--color-brand-border);
+  color: var(--text-brand);
+  border-radius: var(--radius-full);
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all var(--transition-fast);
+}
+.chip-filter:hover {
+  background: rgba(139, 92, 246, 0.25);
+}
+.chip-filter__clear {
+  background: none;
+  border: none;
+  color: var(--text-brand);
+  font-size: 1rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  border-radius: 50%;
+  transition: color var(--transition-fast);
+}
+.chip-filter__clear:hover {
+  color: #FFFFFF;
+}
+
+/* Shimmer Loading Skeleton */
+.skeleton-box {
+  background: linear-gradient(
+    90deg,
+    #14141E 25%,
+    #1F1F2E 37%,
+    #14141E 63%
+  );
+  background-size: 400% 100%;
+  animation: skeleton-shimmer 1.4s ease infinite;
+}
+
+@keyframes skeleton-shimmer {
+  0% { background-position: 100% 50%; }
+  100% { background-position: 0 50%; }
+}
